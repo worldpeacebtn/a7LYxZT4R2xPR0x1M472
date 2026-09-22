@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Bunny Arc — Mobile Edition</title>
+<style>
+:root{color-scheme:dark;--pink:#ff2a6d;--cyan:#05d9e8;--violet:#7f00ff;--bg:#090510}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05030a;font-family:"Courier New",monospace}
+body{touch-action:none}
+#app{position:relative;width:100vw;height:100svh;min-height:100%;overflow:hidden;background:#090510}
+#game{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
+#menuArt{position:absolute;inset:0;background-image:linear-gradient(180deg,rgba(7,2,15,.05),rgba(7,2,15,.78)),url("assets/APPBGCONCEPTMENU.png");background-size:cover;background-position:center;filter:saturate(1.05)}
+#menuArt::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,transparent 0 22%,rgba(5,2,12,.32) 60%,rgba(0,0,0,.72) 100%)}
+.ui{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));pointer-events:none}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.badge{pointer-events:auto;background:rgba(10,3,18,.68);border:1px solid rgba(5,217,232,.7);color:#fff;border-radius:12px;padding:8px 11px;font-size:11px;letter-spacing:1px;backdrop-filter:blur(8px)}
+.score{color:var(--cyan);font-weight:700}
+.center{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;min-height:0}
+.logo{font-weight:900;letter-spacing:2px;font-size:clamp(30px,9vw,64px);line-height:.95;color:#fff;text-shadow:3px 3px 0 var(--pink),0 0 22px rgba(5,217,232,.5)}
+.sub{margin-top:10px;color:#d8d2df;font-size:clamp(10px,2.8vw,14px);letter-spacing:1px}
+.panel{width:min(92vw,430px);margin-top:20px;padding:13px 14px;border:1px solid rgba(5,217,232,.55);border-radius:14px;background:rgba(10,3,18,.72);backdrop-filter:blur(10px);color:#fff;font-size:12px;line-height:1.45}
+.actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;pointer-events:auto}
+button{min-width:92px;min-height:46px;padding:10px 16px;border-radius:12px;border:1px solid var(--cyan);background:rgba(10,3,18,.82);color:#fff;font:700 12px "Courier New",monospace;letter-spacing:.8px}
+button.primary{background:var(--pink);border-color:#fff;color:#12030b;box-shadow:0 5px 0 #8b103c}
+button:active{transform:translateY(2px);box-shadow:none}
+.hidden{display:none!important}
+#hint{color:#c8c0cf;font-size:10px;opacity:.9;text-align:center;margin-top:9px}
+#pauseBtn{min-width:58px}
+@media (orientation:landscape){
+  .logo{font-size:clamp(28px,8vh,52px)}
+  .panel{margin-top:10px}
+  .ui{padding:10px 14px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="menuArt"></div>
+  <canvas id="game" aria-label="Bunny Arc game"></canvas>
+  <div class="ui">
+    <div class="topbar">
+      <div id="modeBadge" class="badge">BUNNY_OS // MOBILE</div>
+      <div id="scoreBadge" class="badge score">SCORE 0</div>
+    </div>
+
+    <div id="home" class="center">
+      <div class="logo">BUNNY<br>ARC</div>
+      <div class="sub">PROFESSOR BUNNY // COMPACT BUILD</div>
+      <div class="panel">A stripped-down version of the concept: the canvas owns the screen, the interface stays out of the way, and one gesture is enough to play.</div>
+    </div>
+
+    <div id="gameover" class="center hidden">
+      <div class="logo" style="font-size:clamp(28px,8vw,52px)">ARC ENDED</div>
+      <div id="finalScore" class="sub">SCORE 0</div>
+    </div>
+
+    <div>
+      <div id="actions" class="actions">
+        <button id="startBtn" class="primary" type="button">START</button>
+        <button id="pauseBtn" type="button" class="hidden">PAUSE</button>
+        <button id="restartBtn" type="button" class="hidden">RESTART</button>
+      </div>
+      <div id="hint">Tap the screen to jump · avoid the double hearts</div>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
+  const app = document.getElementById('app'), menuArt = document.getElementById('menuArt');
+  const home = document.getElementById('home'), gameover = document.getElementById('gameover');
+  const scoreBadge = document.getElementById('scoreBadge'), finalScore = document.getElementById('finalScore');
+  const startBtn = document.getElementById('startBtn'), pauseBtn = document.getElementById('pauseBtn'), restartBtn = document.getElementById('restartBtn');
+  const hint = document.getElementById('hint');
+
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W=360,H=640,dpr=1, state='home', paused=false, score=0, raf=0, last=0, spawnTimer=0, speed=220;
+  let player, obstacles, particles, t=0;
+
+  function resize(){
+    const r=app.getBoundingClientRect();
+    dpr=Math.min(devicePixelRatio||1,2);
+    W=Math.max(280,r.width); H=Math.max(480,r.height);
+    canvas.width=Math.floor(W*dpr); canvas.height=Math.floor(H*dpr);
+    canvas.style.width=W+'px'; canvas.style.height=H+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  addEventListener('resize', resize, {passive:true});
+  addEventListener('orientationchange', () => setTimeout(resize,80), {passive:true});
+
+  function reset(){
+    player={x:W*.17,y:H*.68,w:Math.max(24,W*.075),h:Math.max(34,H*.065),vy:0,grounded:true};
+    obstacles=[]; particles=[]; score=0; speed=Math.max(190,W*.58); spawnTimer=.7; t=0;
+    updateScore();
+  }
+  function updateScore(){scoreBadge.textContent='SCORE '+score}
+  function jump(){
+    if(state!=='play'||paused)return;
+    if(player.grounded){player.vy=-Math.max(520,H*.86);player.grounded=false;burst(player.x+player.w/2,player.y+player.h)}
+  }
+  function start(){
+    reset(); state='play'; paused=false;
+    home.classList.add('hidden'); gameover.classList.add('hidden'); menuArt.style.display='none';
+    startBtn.classList.add('hidden'); restartBtn.classList.add('hidden'); pauseBtn.classList.remove('hidden');
+    hint.textContent='Tap anywhere to jump · survive as long as you can';
+  }
+  function end(){
+    state='over'; paused=false; gameover.classList.remove('hidden'); home.classList.add('hidden');
+    finalScore.textContent='SCORE '+score+' · TAP RESTART';
+    startBtn.classList.add('hidden'); pauseBtn.classList.add('hidden'); restartBtn.classList.remove('hidden');
+    hint.textContent='Tap RESTART to run it again';
+  }
+  function togglePause(){
+    if(state!=='play')return;
+    paused=!paused; pauseBtn.textContent=paused?'RESUME':'PAUSE';
+    hint.textContent=paused?'Paused':'Tap anywhere to jump · survive as long as you can';
+  }
+
+  function burst(x,y){
+    for(let i=0;i<8;i++)particles.push({x,y,vx:(Math.random()-.5)*150,vy:(Math.random()-.8)*130,life:.35});
+  }
+  function spawn(){
+    const s=Math.max(26,Math.min(40,W*.09));
+    obstacles.push({x:W+s,y:H*.74-s,w:s,h:s,passed:false});
+  }
+  function collide(a,b){
+    const pad=4;
+    return a.x+pad<b.x+b.w-pad && a.x+a.w-pad>b.x+pad && a.y+pad<b.y+b.h-pad && a.y+a.h-pad>b.y+pad;
+  }
+
+  function drawBunny(x,y,w,h,jump){
+    const sx=w/24, sy=h/36;
+    ctx.save();ctx.translate(x,y);ctx.scale(sx,sy);
+    ctx.fillStyle='#ff0055';ctx.fillRect(0,8,24,20);
+    ctx.fillStyle='#05d9e8';ctx.fillRect(2,-4,6,12);ctx.fillRect(16,-4,6,12);
+    ctx.fillStyle='#09020f';ctx.fillRect(4,12,16,8);
+    ctx.fillStyle='#05d9e8';ctx.fillRect(6,14,4,4);ctx.fillRect(14,14,4,4);
+    ctx.fillStyle='#ff2a6d';
+    if(jump){ctx.fillRect(4,28,6,8);ctx.fillRect(14,28,6,7)}
+    else{const o=Math.sin(t*10)*3;ctx.fillRect(4,28+o,6,8);ctx.fillRect(14,28-o,6,8)}
+    ctx.restore();
+  }
+  function heart(x,y,w,h){
+    ctx.save();ctx.translate(x,y);ctx.fillStyle='#ff007f';ctx.beginPath();
+    ctx.moveTo(w/2,h);ctx.lineTo(0,h*.34);ctx.lineTo(w*.25,0);ctx.lineTo(w/2,h*.25);ctx.lineTo(w*.75,0);ctx.lineTo(w,h*.34);ctx.fill();
+    ctx.globalAlpha=.72;ctx.fillStyle='#7f00ff';ctx.translate(6,6);ctx.beginPath();
+    ctx.moveTo(w/2,h);ctx.lineTo(0,h*.34);ctx.lineTo(w*.25,0);ctx.lineTo(w/2,h*.25);ctx.lineTo(w*.75,0);ctx.lineTo(w,h*.34);ctx.fill();ctx.restore();
+  }
+  function background(){
+    const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0a0312');g.addColorStop(1,'#14051b');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(5,217,232,.13)';ctx.lineWidth=1;
+    const floor=H*.74;
+    const off=(t*40)%28;
+    for(let x=-40;x<W+40;x+=28){ctx.beginPath();ctx.moveTo(x-off,floor);ctx.lineTo(x-off-60,H);ctx.stroke()}
+    for(let y=floor;y<H;y+=Math.max(10,H*.018)){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+    ctx.strokeStyle='#ff2a6d';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,floor);ctx.lineTo(W,floor);ctx.stroke();
+  }
+
+  function frame(dt){
+    t+=dt;
+    if(state==='play'&&!paused){
+      const floor=H*.74;
+      player.vy+=Math.max(1350,H*2.1)*dt; player.y+=player.vy*dt;
+      if(player.y+player.h>=floor){player.y=floor-player.h;player.vy=0;player.grounded=true}
+      speed += dt*3.2;
+      spawnTimer-=dt;
+      if(spawnTimer<=0){spawn();spawnTimer=.95+Math.random()*.7}
+      for(let i=obstacles.length-1;i>=0;i--){
+        const o=obstacles[i];o.x-=speed*dt;
+        if(collide(player,o)){burst(player.x,player.y);end();break}
+        if(!o.passed&&o.x+o.w<player.x){o.passed=true;score++;updateScore()}
+        if(o.x+o.w<-20)obstacles.splice(i,1);
+      }
+      for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=420*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1)}
+    }
+
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    background();
+    if(state==='play'||state==='over'){
+      for(const o of obstacles)heart(o.x,o.y,o.w,o.h);
+      drawBunny(player.x,player.y,player.w,player.h,!player.grounded);
+      for(const p of particles){ctx.globalAlpha=Math.max(0,p.life/.35);ctx.fillStyle='#05d9e8';ctx.fillRect(p.x,p.y,4,4)}ctx.globalAlpha=1;
+      if(paused){ctx.fillStyle='rgba(0,0,0,.48)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';ctx.font='700 18px Courier New';ctx.textAlign='center';ctx.fillText('PAUSED',W/2,H/2)}
+    } else {
+      // subtle idle bunny behind the HTML menu
+      drawBunny(W*.5-20,H*.62,40,60,false);
+    }
+    raf=requestAnimationFrame(loop);
+  }
+  function loop(now){const dt=Math.min(.032,Math.max(0,(now-last)/1000||0));last=now;frame(reduced?Math.min(dt,.02):dt)}
+  function tap(e){
+    if(e.target.closest('button'))return;
+    if(state==='play')jump();
+    else if(state==='home')start();
+    else if(state==='over')start();
+  }
+
+  startBtn.addEventListener('click',start);
+  restartBtn.addEventListener('click',start);
+  pauseBtn.addEventListener('click',togglePause);
+  canvas.addEventListener('pointerdown',tap,{passive:true});
+  app.addEventListener('keydown',e=>{
+    if(e.target.matches('button,input,textarea,select'))return;
+    if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();if(state==='home'||state==='over')start();else jump()}
+    if(e.code==='KeyP')togglePause();
+  });
+  resize(); reset(); loop(0);
+})();
+</script>
+</body>
+</html>
