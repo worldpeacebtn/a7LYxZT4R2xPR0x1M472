@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>XYZ Generator · Quantumverse Creative Suite</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pink:#ff9ecf;--lav:#c9a7ff;--aqua:#7ee8fa;--gold:#ffd98e;--mint:#9ae6b4;--red:#e0245e;
+  --bg:#05040b;--panel:rgba(15,10,26,.92);--border:rgba(255,255,255,.18);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:#f4f1ff;
+  font-family:Quicksand,system-ui;overscroll-behavior:none}
+#grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    repeating-linear-gradient(0deg,transparent 0 32px,rgba(168,85,247,.09) 32px 33px),
+    repeating-linear-gradient(90deg,transparent 0 32px,rgba(126,232,250,.07) 32px 33px);}
+#grid-bg::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(60vw 60vw at 12% 8%, rgba(126,232,250,.16), transparent 65%),
+    radial-gradient(60vw 60vw at 88% 92%, rgba(201,167,255,.18), transparent 65%);}
+#app{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;padding:10px;gap:8px}
+header{display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--border);
+  border-radius:16px;padding:10px;backdrop-filter:blur(8px)}
+h1{font-family:Fredoka;font-size:16px;margin:0;color:var(--gold);letter-spacing:.04em;text-align:center}
+.sig-row{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.sig-row input{width:44px;text-align:center;font-family:Fredoka;font-size:18px;background:rgba(0,0,0,.35);
+  border:1px solid var(--border);border-radius:8px;color:#fff;padding:4px}
+.sig-row .x{font-family:Fredoka;font-size:20px;color:var(--red);text-shadow:0 0 10px var(--red)}
+.title-input{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:10px;
+  color:#fff;padding:8px 10px;font-family:Quicksand;font-size:13px}
+.main{display:flex;flex:1;gap:8px;min-height:0}
+.left{flex:1;overflow-y:auto;padding-right:4px;display:flex;flex-direction:column;gap:8px}
+.right{width:210px;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+@media(max-width:720px){.right{display:none}}
+details{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+summary{padding:10px 12px;font-family:Fredoka;font-size:13px;color:var(--aqua);cursor:pointer;
+  display:flex;justify-content:space-between;align-items:center;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'▸';transition:transform .2s}
+details[open] summary::after{transform:rotate(90deg)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;padding:8px}
+.card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;
+  padding:8px;cursor:pointer;transition:all .18s;position:relative;user-select:none}
+.card:hover{border-color:var(--lav);background:rgba(201,167,255,.08)}
+.card.on{border-color:var(--gold);background:rgba(255,217,142,.12);box-shadow:0 0 14px -4px var(--gold)}
+.card .chk{position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.35);display:grid;place-items:center;font-size:11px;color:#0b0616;
+  transition:all .15s}
+.card.on .chk{background:var(--gold);border-color:var(--gold);content:'✓'}
+.card h4{margin:0 0 3px;font-size:12px;color:#fff;font-family:Fredoka;padding-right:20px}
+.card p{margin:0;font-size:9.5px;color:#aaa;line-height:1.3}
+.side-panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:10px;
+  display:flex;flex-direction:column;gap:6px}
+.side-panel h3{margin:0;font-family:Fredoka;font-size:12px;color:var(--gold)}
+.preset-list{max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.preset-item{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.06);
+  border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer;border:1px solid transparent}
+.preset-item:hover{border-color:var(--aqua)}
+.preset-item .del{color:var(--red);font-weight:800;cursor:pointer;padding:0 4px}
+.btn{background:linear-gradient(120deg,var(--aqua),var(--lav));color:#0b0616;border:0;border-radius:10px;
+  padding:8px;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.06em;cursor:pointer}
+.btn.alt{background:rgba(255,255,255,.1);color:#fff;border:1px solid var(--border)}
+.btn:active{transform:scale(.97)}
+.progress{height:6px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden}
+.progress > div{height:100%;width:0;background:linear-gradient(90deg,var(--mint),var(--gold));transition:width .3s}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--gold);color:#0b0616;
+  padding:8px 16px;border-radius:99px;font-weight:800;font-size:12px;opacity:0;pointer-events:none;transition:opacity .3s}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div id="grid-bg"></div>
+<div id="app">
+  <header>
+    <h1>⚡ XYZ QUANTUMVERSE GENERATOR ⚡</h1>
+    <div class="sig-row">
+      <input id="sig1" maxlength="3" value="ABC" placeholder="AAA">
+      <span class="x">X</span>
+      <input id="sig2" maxlength="3" value="XYZ" placeholder="ZZZ">
+    </div>
+    <input id="projectTitle" class="title-input" placeholder="Project title (long)" value="Living Letters Suite">
+  </header>
+  <div class="main">
+    <div class="left" id="categories"></div>
+    <div class="right">
+      <div class="side-panel">
+        <h3>📦 Preset Library</h3>
+        <input id="presetName" class="title-input" placeholder="Preset name" style="font-size:11px;padding:5px">
+        <button class="btn" onclick="savePreset()">Save Current</button>
+        <div class="preset-list" id="presetList"></div>
+        <button class="btn alt" onclick="clearAll()">Clear All</button>
+      </div>
+      <div class="side-panel">
+        <h3>📊 Progress</h3>
+        <div class="progress"><div id="progressBar"></div></div>
+        <div style="font-size:10px;color:#aaa;text-align:center" id="progressText">0 selected</div>
+      </div>
+      <button class="btn" onclick="exportTxt()">💾 Save as .txt</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// Feature library — extendable
+const FEATURES = [
+  {cat:'🎨 Canvas & Visuals', items:[
+    {id:'holo-grid', name:'Holo Grid', desc:'Animated neon grid background'},
+    {id:'particles', name:'Particles', desc:'Audio-reactive floating particles'},
+    {id:'scanlines', name:'Scanlines', desc:'CRT overlay effect'},
+    {id:'glow', name:'Neon Glow', desc:'Drop shadows and bloom'},
+    {id:'themes', name:'Scene Themes', desc:'Space, ocean, mystic, cyber, panda'},
+  ]},
+  {cat:'🔊 Audio & Sound', items:[
+    {id:'cipher', name:'Audio Cipher', desc:'Norbinny, forest, celestial, etc.'},
+    {id:'mixput', name:'Rainbow Mixput', desc:'Joystick filters frequency/gain'},
+    {id:'paper', name:'Paper SFX', desc:'Pop, save, paper sounds'},
+    {id:'tts', name:'Narrator TTS', desc:'Read letter aloud, narrate taps'},
+  ]},
+  {cat:'📝 Text & Narrative', items:[
+    {id:'letter', name:'E-Letter', desc:'Write, save txt/html/pdf'},
+    {id:'gods', name:'Greek Gods', desc:'Click for wisdom lines'},
+    {id:'says', name:'Paulis Says', desc:'Speech bubbles from pets'},
+    {id:'story', name:'Story Mode', desc:'Dialogue and quests'},
+  ]},
+  {cat:'🖼️ Media & Assets', items:[
+    {id:'upload', name:'Universal Upload', desc:'Auto-sort images, audio, video'},
+    {id:'doll', name:'Doll Library', desc:'Head/torso/legs/feet → sticker'},
+    {id:'preset', name:'Girl Assets', desc:'Auto-bind by filename'},
+    {id:'webcam', name:'Webcam Snap', desc:'Capture and add as sticker'},
+  ]},
+  {cat:'🕹️ Interactivity', items:[
+    {id:'drag', name:'Drag & Pinch', desc:'Move, scale, rotate stickers'},
+    {id:'mini-hud', name:'Mini HUD', desc:'Radial actions on selected sticker'},
+    {id:'wand', name:'Wand Lift', desc:'Double-tap to lift with wand'},
+    {id:'connect', name:'Connect Threads', desc:'Link stickers with red threads'},
+    {id:'hitbox', name:'Hitbox Mode', desc:'Toggle dashed hitbox outline'},
+    {id:'desc', name:'Description', desc:'Add label under sticker'},
+  ]},
+  {cat:'🤖 AI & Automation', items:[
+    {id:'autorun', name:'Auto Run', desc:'Rabbit moves automatically + Nyan trail'},
+    {id:'mix-tool', name:'Mix Tool', desc:'Joystick changes color instead of moving'},
+    {id:'rss', name:'RSS Feed', desc:'Load news into stickers (optional)'},
+  ]},
+  {cat:'📤 Export & Sharing', items:[
+    {id:'export-png', name:'Export PNG', desc:'Save canvas as image'},
+    {id:'export-json', name:'Export JSON', desc:'Save game state'},
+    {id:'save-txt', name:'Save TXT', desc:'Export selected features as text'},
+  ]},
+  {cat:'⚙️ Meta & System', items:[
+    {id:'gaming-hud', name:'Gaming HUD', desc:'D-pad, actions, mixput'},
+    {id:'layers', name:'Layer System', desc:'Sky, mid-back, mid-front, foreground'},
+    {id:'keyboard', name:'Keyboard Fix', desc:'Prevent canvas scroll on arrow keys'},
+    {id:'click-away', name:'Click-Away Popups', desc:'Close modals by tapping backdrop'},
+  ]},
+];
+
+const state = {}; // id -> bool
+const presetKey = 'xyz_presets_v1';
+let presets = JSON.parse(localStorage.getItem(presetKey) || '[]');
+
+function render() {
+  const container = document.getElementById('categories');
+  container.innerHTML = '';
+  FEATURES.forEach(cat => {
+    const det = document.createElement('details');
+    det.open = true;
+    const sum = document.createElement('summary');
+    sum.textContent = cat.cat;
+    det.appendChild(sum);
+    const cards = document.createElement('div');
+    cards.className = 'cards';
+    cat.items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'card' + (state[item.id] ? ' on' : '');
+      card.dataset.id = item.id;
+      card.innerHTML = `<div class="chk">${state[item.id] ? '✓' : ''}</div>
+        <h4>${item.name}</h4><p>${item.desc}</p>`;
+      card.addEventListener('click', () => {
+        state[item.id] = !state[item.id];
+        card.classList.toggle('on', state[item.id]);
+        card.querySelector('.chk').textContent = state[item.id] ? '✓' : '';
+        updateProgress();
+        // dopamine: quick pulse
+        card.animate([{transform:'scale(1)'},{transform:'scale(1.04)'},{transform:'scale(1)'}],{duration:180});
+      });
+      cards.appendChild(card);
+    });
+    det.appendChild(cards);
+    container.appendChild(det);
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  const total = Object.values(state).filter(Boolean).length;
+  const all = FEATURES.reduce((a,c)=>a+c.items.length,0);
+  const pct = all ? (total/all)*100 : 0;
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${total} selected`;
+}
+
+function savePreset() {
+  const name = document.getElementById('presetName').value.trim() || 'Preset ' + (presets.length+1);
+  const selected = Object.keys(state).filter(k => state[k]);
+  presets.push({name, selected, sig1: document.getElementById('sig1').value, sig2: document.getElementById('sig2').value, title: document.getElementById('projectTitle').value});
+  localStorage.setItem(presetKey, JSON.stringify(presets));
+  document.getElementById('presetName').value = '';
+  renderPresets();
+  toast('Preset saved ✦');
+}
+
+function renderPresets() {
+  const list = document.getElementById('presetList');
+  list.innerHTML = '';
+  presets.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'preset-item';
+    el.innerHTML = `<span>${p.name}</span><span class="del" data-i="${i}">✕</span>`;
+    el.addEventListener('click', (e) => {
+      if (e.target.classList.contains('del')) return;
+      loadPreset(i);
+    });
+    el.querySelector('.del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      presets.splice(i,1);
+      localStorage.setItem(presetKey, JSON.stringify(presets));
+      renderPresets();
+    });
+    list.appendChild(el);
+  });
+}
+
+function loadPreset(i) {
+  const p = presets[i];
+  if (!p) return;
+  Object.keys(state).forEach(k => state[k] = false);
+  p.selected.forEach(id => { if (state.hasOwnProperty(id)) state[id] = true; });
+  document.getElementById('sig1').value = p.sig1 || 'ABC';
+  document.getElementById('sig2').value = p.sig2 || 'XYZ';
+  document.getElementById('projectTitle').value = p.title || '';
+  render();
+  toast('Preset loaded ✦');
+}
+
+function clearAll() {
+  Object.keys(state).forEach(k => state[k] = false);
+  render();
+  toast('Cleared');
+}
+
+function exportTxt() {
+  const sig1 = document.getElementById('sig1').value || 'ABC';
+  const sig2 = document.getElementById('sig2').value || 'XYZ';
+  const title = document.getElementById('projectTitle').value || 'Untitled';
+  let out = `XYZ GENERATOR EXPORT\n`;
+  out += `Signature: ${sig1} X ${sig2}\n`;
+  out += `Project: ${title}\n`;
+  out += `Date: ${new Date().toISOString()}\n\n`;
+  FEATURES.forEach(cat => {
+    const selected = cat.items.filter(it => state[it.id]);
+    if (selected.length) {
+      out += `## ${cat.cat}\n`;
+      selected.forEach(it => {
+        out += `- ${it.name}: ${it.desc}\n`;
+      });
+      out += '\n';
+    }
+  });
+  if (!out.includes('##')) out += 'No features selected.\n';
+  const blob = new Blob([out], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `xyz_export_${Date.now()}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast('Saved .txt ✦');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  setTimeout(() => t.classList.remove('on'), 1800);
+}
+
+// init
+render();
+renderPresets();
+</script>
+</body>
+</html>
